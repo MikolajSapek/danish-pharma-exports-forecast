@@ -21,6 +21,7 @@ Denmark is the EU's 8th-largest pharma exporter (≈ €13.7 bn, 2024) and pharm
 
 - **Source:** DST Statbank, SITC 54 (medicinal & pharmaceutical products), nominal DKK.
 - **Span:** Jan 2007 – Mar 2026, **231 monthly observations**. Rises from 2.6–4.0 Bn DKK/month (2007) to 15–19 Bn DKK/month (2025–26).
+- 🔗 **Dataset:** [`data/pharma_exports.csv`](data/pharma_exports.csv) (231 monthly rows, `month,exports`) — extracted from [Statistics Denmark Statbank](https://www.statbank.dk/) (SITC 54).
 
 | Period | Mean | Min | Max | Std. dev. |
 |---|---:|---:|---:|---:|
@@ -122,14 +123,16 @@ Denmark is the EU's 8th-largest pharma exporter (≈ €13.7 bn, 2024) and pharm
 2. **GLP-1 / COVID step dummies added no value:** the drift term already absorbed the smooth, sustained level shift, so a one-off dummy added noise, not signal.
 3. **Biggest threat:** concentration — the "macro" series is largely one firm (Novo Nordisk); a capacity or competitor shock is invisible to a univariate model.
 
-## Oral defence — likely questions
+## Reasoning behind the modelling choices
 
-- **Why log/Box-Cox?** Guerrero λ ≈ 0; log stabilises growing seasonal swings so variance is roughly constant.
-- **Why d = 1, D = 0?** ADF can't reject a unit root on levels/log but does on diff(log); seasonality is stable in amplitude, so seasonal AR/MA at lag 12 captures it without a seasonal difference.
-- **How were the orders identified?** ACF lag-1 spike → MA(1); lag-2 spike → MA(2); ACF lag-12 spike → seasonal MA(1); PACF decay at seasonal lags → seasonal AR(1).
-- **Why ARIMA over ETS when ETS won the single holdout?** Both pass diagnostics, but SARIMA wins rolling CV (1.66 vs 1.70) and has the wider Ljung-Box margin → more reliable intervals. CV over 19 origins beats one split.
-- **MASE = 1.28 > 1 — worse than naïve?** Marginally, month-to-month on this boom holdout. But seasonal naïve gives no trend and no usable interval; SARIMA gives both and beats naïve in CV (1.66 vs 1.92).
-- **Why did the dummies fail?** The acceleration is smooth and sustained and the drift already absorbed it; a step dummy fires once and adds noise.
+| Characteristic of the series | What it justifies | Rejected alternative |
+|---|---|---|
+| Seasonal swings grow with the level | Log / Box-Cox (λ ≈ 0) | Raw scale → variance breaks ARIMA/ETS assumptions |
+| Unit root on level, stationary after 1 difference | d = 1 | d = 0 spurious trend; d = 2 over-differenced |
+| Seasonal pattern stable in amplitude | D = 0, seasonal AR/MA at lag 12 | Seasonal difference removes a stable pattern |
+| Smooth, sustained uptrend | Drift (kept despite t ≈ 1) | Step dummy is the wrong shape |
+| Acceleration gradual, not a jump | No break dummy (QLR/Bai-Perron agree) | SARIMAX dummies fail Ljung-Box |
+| Forecast used through its intervals | Diagnostics-first gate | Lowest-RMSE Fourier → invalid intervals |
 
 ## Limitations & future work
 
